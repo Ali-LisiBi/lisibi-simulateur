@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulateur P&L — LisiBi</title>
+<style>
+  :root {
+    --bg: #0F172A;
+    --surface: #1E293B;
+    --border: #334155;
+    --yellow: #FACC15;
+    --yellow-dim: #B45309;
+    --text: #F1F5F9;
+    --muted: #94A3B8;
+    --green: #22C55E;
+    --red: #EF4444;
+    --orange: #F97316;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  
+  .page { max-width: 1200px; margin: 0 auto; padding: 24px 16px 60px; }
+  
+  .header { margin-bottom: 32px; border-left: 3px solid var(--yellow); padding-left: 16px; }
+  .header h1 { font-size: 22px; font-weight: 700; color: var(--text); }
+  .header p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  @media (max-width: 900px) { .grid-2 { grid-template-columns: 1fr; } }
+  :root { --c1: 420px; --c2: 520px; --c3: 520px; }
+  .grid-3 { display: grid; grid-template-columns: var(--c1) var(--c2) var(--c3); gap: 20px; }
+  .page { overflow-x: auto; }
+  .col-ctrl { display: flex; gap: 20px; align-items: center; margin-bottom: 14px; padding: 9px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); flex-wrap: wrap; }
+  .col-ctrl-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-right: 4px; }
+  .cci { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted); }
+  .cci input[type=range] { width: 90px; -webkit-appearance: none; height: 3px; background: var(--border); border-radius: 2px; cursor: pointer; }
+  .cci input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--yellow); cursor: pointer; }
+  .ccv { font-size: 11px; color: var(--yellow); min-width: 36px; }
+  .res-wrap { margin-top: 24px; }
+  .res-hdr { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .res-cards { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; }
+  @media(max-width:900px){.res-cards{grid-template-columns:repeat(2,1fr)}}
+  .res-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .res-lbl { font-size: 9px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 5px; }
+  .res-val { font-size: 20px; font-weight: 700; }
+  .res-sub { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .pbar { height: 7px; border-radius: 4px; background: var(--border); margin-top: 8px; overflow: hidden; }
+  .pfill { height: 100%; border-radius: 4px; transition: width .3s; }
+  @media (max-width: 1100px) { .grid-3 { grid-template-columns: var(--c1) var(--c2); } }
+  @media (max-width: 700px) { .grid-3 { grid-template-columns: 1fr; } }
+  .pt { width: 100%; border-collapse: collapse; font-size: 10px; margin-top: 10px; }
+  .pt th { padding: 5px 7px; text-align: right; font-size: 9px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); background: rgba(255,255,255,.03); }
+  .pt th:first-child { text-align: left; }
+  .pt td { padding: 5px 7px; border-top: 1px solid rgba(255,255,255,.04); text-align: right; font-variant-numeric: tabular-nums; }
+  .pt td:first-child { text-align: left; font-weight: 500; }
+  .pt .cr td { background: rgba(250,204,21,.07); font-weight: 700; border-top: 2px solid var(--yellow) !important; }
+  .lg { display: flex; gap: 12px; margin-bottom: 8px; }
+  .li { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted); }
+  .ld { width: 11px; height: 2.5px; border-radius: 2px; }
+  
+  .section { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 16px; overflow: hidden; }
+  .section-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; cursor: pointer; user-select: none; }
+  .section-title { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--yellow); flex-shrink: 0; }
+  .dot.green { background: var(--green); }
+  .dot.orange { background: var(--orange); }
+  .chevron { color: var(--muted); transition: transform 0.2s; font-size: 12px; }
+  .chevron.open { transform: rotate(180deg); }
+  .section-body { padding: 16px; border-top: 1px solid var(--border); }
+  
+  .fields { display: grid; gap: 12px; }
+  .fields-2 { grid-template-columns: 1fr 1fr; }
+  .fields-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .fields-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  @media (max-width: 600px) { .fields-2, .fields-3, .fields-4 { grid-template-columns: 1fr 1fr; } }
+  
+  .field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; }
+  .field input[type="number"] {
+    width: 100%; background: var(--bg); border: 1px solid var(--border);
+    color: var(--text); border-radius: 6px; padding: 8px 10px; font-size: 13px;
+    transition: border-color 0.15s;
+    -moz-appearance: textfield;
+  }
+  .field input[type="number"]::-webkit-outer-spin-button,
+  .field input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .field input[type="number"]:focus { outline: none; border-color: var(--yellow); }
+  .field .hint { font-size: 11px; color: var(--yellow); margin-top: 4px; }
+  
+  /* Sliders */
+  .slider-row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .slider-row label { font-size: 12px; color: var(--muted); min-width: 180px; }
+  .slider-row input[type="range"] {
+    flex: 1; -webkit-appearance: none; height: 4px;
+    background: var(--border); border-radius: 2px; cursor: pointer;
+  }
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 16px; height: 16px; border-radius: 50%;
+    background: var(--yellow); cursor: pointer;
+  }
+  .slider-val { font-size: 13px; font-weight: 600; color: var(--yellow); min-width: 40px; text-align: right; }
+  
+  /* P&L Tables */
+  .pl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .pl-table th { padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); background: rgba(255,255,255,0.03); }
+  .pl-table th.right { text-align: right; }
+  .pl-table td { padding: 7px 12px; border-top: 1px solid rgba(255,255,255,0.04); }
+  .pl-table td.right { text-align: right; font-variant-numeric: tabular-nums; }
+  .pl-table .section-row td { font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--yellow); padding-top: 14px; padding-bottom: 4px; background: transparent; border: none; }
+  .pl-table .total-row td { font-weight: 600; background: rgba(255,255,255,0.04); border-top: 1px solid var(--border) !important; }
+  .pl-table .marge-row td { font-weight: 700; font-size: 14px; background: rgba(250,204,21,0.08); border-top: 2px solid var(--yellow) !important; }
+  .pl-table .green-val { color: var(--green); }
+  .pl-table .pct { font-size: 11px; color: var(--muted); margin-left: 4px; }
+  .pl-table .gain { font-size: 11px; color: var(--green); }
+  
+  /* KPI Cards */
+  .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  @media (max-width: 700px) { .kpi-row { grid-template-columns: repeat(2, 1fr); } }
+  .kpi-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .kpi-card .kpi-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 6px; }
+  .kpi-card .kpi-val { font-size: 20px; font-weight: 700; color: var(--text); }
+  .kpi-card .kpi-val.green { color: var(--green); }
+  .kpi-card .kpi-delta { font-size: 11px; color: var(--green); margin-top: 2px; }
+  
+  .results-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .badge-lisibi { background: var(--yellow); color: var(--bg); font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px; letter-spacing: 0.05em; }
+  
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+  
+  .col-sans { color: var(--muted); }
+  .col-avec { color: var(--text); }
+  
+  .warning { background: rgba(249,115,22,0.1); border: 1px solid rgba(249,115,22,0.3); border-radius: 6px; padding: 10px 14px; font-size: 12px; color: var(--orange); margin-bottom: 16px; display: none; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="header">
+    <h1>Simulateur P&amp;L</h1>
+    <p>Analyse de rentabilité par contrat et par entreprise — avec et sans LisiBi</p>
+  </div>
+
+  <div class="col-ctrl">
+    <span class="col-ctrl-lbl">Largeur colonnes</span>
+    <div class="cci"><span>Inputs</span><input type=range min=300 max=700 step=10 value=420 oninput="setCW(1,this.value)"><span class="ccv" id=cw1>420px</span></div>
+    <div class="cci"><span>P&amp;L</span><input type=range min=300 max=700 step=10 value=520 oninput="setCW(2,this.value)"><span class="ccv" id=cw2>520px</span></div>
+    <div class="cci"><span>Projection</span><input type=range min=300 max=700 step=10 value=520 oninput="setCW(3,this.value)"><span class="ccv" id=cw3>520px</span></div>
+  </div>
+  <div class="grid-3">
+    <!-- LEFT: INPUTS -->
+    <div>
+
+      <!-- REVENUS -->
+      <div class="section">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-title"><span class="dot"></span>Revenus</div>
+          <span class="chevron open">▼</span>
+        </div>
+        <div class="section-body">
+          <div class="fields fields-2">
+            <div class="field"><label>ARR / contrat (€/an)</label><input type="number" id="arr" value="1700" oninput="calc()"></div>
+            <div class="field"><label>CA pièces vendues / an (€)</label><input type="number" id="ca_pieces" value="0" oninput="calc()"></div>
+            <div class="field"><label>Marge brute pièces (%)</label><input type="number" id="marge_pieces" value="30" oninput="calc()"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- MAINTENANCE PLANIFIÉE -->
+      <div class="section">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-title"><span class="dot"></span>Maintenance planifiée</div>
+          <span class="chevron open">▼</span>
+        </div>
+        <div class="section-body">
+          <div class="fields fields-2">
+            <div class="field"><label>Nb visites / an</label><input type="number" id="nb_visites" value="9" oninput="calc()"></div>
+            <div class="field"><label>Durée visite (min)</label><input type="number" id="duree_visite" value="30" oninput="calc()"></div>
+            <div class="field"><label>Déplacement / visite (min)</label><input type="number" id="dep_visite" value="45" oninput="calc()"></div>
+            <div class="field">
+              <label>Salaire net technicien (€/mois)</label>
+              <input type="number" id="salaire_net_tech" value="2700" oninput="calc()">
+              <div class="hint" id="taux_calc">≈ 30€/h (coût employeur)</div>
+            </div>
+            <div class="field"><label>Consommables / visite (€)</label><input type="number" id="consommables" value="10" oninput="calc()"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PANNES -->
+      <div class="section">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-title"><span class="dot orange"></span>Pannes</div>
+          <span class="chevron open">▼</span>
+        </div>
+        <div class="section-body">
+          <div class="fields fields-2">
+            <div class="field"><label>Nb pannes / an</label><input type="number" id="nb_pannes" value="3" oninput="calc()"></div>
+            <div class="field"><label>Passages / panne</label><input type="number" id="passages_panne" value="1.5" step="0.1" oninput="calc()"></div>
+            <div class="field"><label>Durée passage panne (min)</label><input type="number" id="duree_panne" value="45" oninput="calc()"></div>
+            <div class="field"><label>Déplacement / passage (min)</label><input type="number" id="dep_panne" value="45" oninput="calc()"></div>
+            <div class="field"><label>Coût pièces / an (€)</label><input type="number" id="cout_pieces" value="300" oninput="calc()"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DÉBLOCAGES -->
+      <div class="section">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-title"><span class="dot orange"></span>Déblocages</div>
+          <span class="chevron open">▼</span>
+        </div>
+        <div class="section-body">
+          <div class="fields fields-2">
+            <div class="field"><label>Nb déblocages / an</label><input type="number" id="nb_deblocages" value="1" oninput="calc()"></div>
+            <div class="field"><label>Coût unitaire déblocage (€)</label><input type="number" id="cout_deblocage" value="90" oninput="calc()"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- COÛTS INDIRECTS CONTRAT -->
+      <div class="section">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-title"><span class="dot"></span>Coûts indirects contrat</div>
+          <span class="chevron open">▼</span>
+        </div>
+        <div class="section-body">
+          <div class="fields fields-2">
+            <div class="field">
+              <label>Abonnements divers (€/an)</label>
+              <input type="number" id="abonnements_divers" value="100" oninput="calc()">
+            </div>
+            <div class="field">
+              <label>Abonnement LisiBi (% ARR)</label>
+              <input type="number" id="lisibi_pct" value="2.5" step="0.1" oninput="calc()">
+              <div class="hint" id="lisibi_montant">= 42€/an</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LEVIERS LISIBI -->
+      <div class="section">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-title"><span class="dot green"></span>Leviers LisiBi — Gains estimés</div>
+          <span class="chevron open">▼</span>
+        </div>
+        <div class="section-body">
+          <div class="slider-row">
+            <label>Réduction nb pannes</label>
+            <input type="range" id="red_pannes" min="0" max="50" value="15" oninput="updSlider(this,'val_red_pannes');calc()">
+            <span class="slider-val" id="val_red_pannes">-15%</span>
+          </div>
+          <div class="slider-row">
+            <label>Réduction passages / panne</label>
+            <input type="range" id="red_passages" min="0" max="50" value="20" oninput="updSlider(this,'val_red_passages');calc()">
+            <span class="slider-val" id="val_red_passages">-20%</span>
+          </div>
+          <div class="slider-row">
+            <label>Réduction déblocages</label>
+            <input type="range" id="red_deblocages" min="0" max="50" value="25" oninput="updSlider(this,'val_red_deblocages');calc()">
+            <span class="slider-val" id="val_red_deblocages">-25%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- STRUCTURE ENTREPRISE -->
+      <div class="section">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-title"><span class="dot"></span>Structure entreprise</div>
+          <span class="chevron open">▼</span>
+        </div>
+        <div class="section-body">
+          <div class="fields fields-2" style="margin-bottom:16px">
+            <div class="field"><label>Nb ascenseurs total</label><input type="number" id="nb_asc" value="1000" oninput="calc()"></div>
+            <div class="field"><label>Nb techniciens terrain</label><input type="number" id="nb_tech" value="10" oninput="calc()"></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em;">Équipes (salaire net × 1,7 = coût employeur)</div>
+          <div class="fields fields-2" style="margin-bottom:16px">
+            <div class="field"><label>Nb assistants</label><input type="number" id="nb_assistants" value="1" oninput="calc()"></div>
+            <div class="field"><label>Salaire net assistant (€/mois)</label><input type="number" id="salaire_net_ass" value="1700" oninput="calc()"></div>
+            <div class="field"><label>Nb agents techniques / CE</label><input type="number" id="nb_agents" value="1" oninput="calc()"></div>
+            <div class="field"><label>Salaire net agent (€/mois)</label><input type="number" id="salaire_net_agent" value="3000" oninput="calc()"></div>
+            <div class="field"><label>Dirigeant — salaire net (€/mois)</label><input type="number" id="sal_dirigeant" value="3500" oninput="calc()"></div>
+            <div class="field"><label>Nb commerciaux</label><input type="number" id="nb_commerciaux" value="1" oninput="calc()"></div>
+            <div class="field"><label>Salaire net commercial (€/mois)</label><input type="number" id="sal_commercial" value="2500" oninput="calc()"></div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:0.06em;">Coûts fixes</div>
+          <div class="fields fields-2">
+            <div class="field"><label>Leasing véhicule / mois (€) <br><span style="font-size:10px;color:var(--muted)">(techs + agents)</span></label><input type="number" id="leasing_vehicule" value="550" oninput="calc()"></div>
+            <div class="field"><label>Formation / technicien / an (€)</label><input type="number" id="formation_par_tech" value="400" oninput="calc()"></div>
+            <div class="field"><label>GMAO / technicien / mois (€)</label><input type="number" id="gmao_par_tech" value="80" oninput="calc()"></div>
+            <div class="field"><label>Expert-comptable + juridique / an (€)</label><input type="number" id="compta_annuel" value="4500" oninput="calc()"></div>
+            <div class="field"><label>Heures productives/tech/an</label><input type="number" id="heures_prod" value="1575" oninput="calc()"></div>
+            <div class="field"><label>Locaux / mois (€)</label><input type="number" id="locaux_mensuel" value="1500" oninput="calc()"></div>
+            <div class="field"><label>RC pro / mois (€)</label><input type="number" id="rc_pro" value="300" oninput="calc()"></div>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- DYNAMIQUE DU PARC -->
+      <div class="section">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-title"><span class="dot green"></span>Dynamique du parc</div>
+          <span class="chevron open">▼</span>
+        </div>
+        <div class="section-body">
+          <div class="fields fields-2">
+            <div class="field">
+              <label>Taux de churn annuel (%)</label>
+              <input type="number" id="churn_pct" value="5" step="0.5" oninput="calc()">
+              <div class="hint" id="churn_hint">= -3 contrats/an</div>
+            </div>
+            <div class="field">
+              <label>Taux de croissance annuel (%)</label>
+              <input type="number" id="growth_pct" value="10" step="0.5" oninput="calc()">
+              <div class="hint" id="growth_hint">= +5 contrats/an</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: RESULTS -->
+    <div>
+
+      <!-- WARNING -->
+      <div class="warning" id="warning_asc">⚠️ Le nombre d'ascenseurs par technicien dépasse 100. Risque de sous-dimensionnement.</div>
+
+      <!-- KPI CARDS -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-label">Marge op. / contrat</div>
+          <div class="kpi-val" id="k_marge_contrat_sans">—</div>
+          <div class="kpi-delta" id="k_marge_contrat_pct_sans">sans LisiBi</div>
+        </div>
+        <div class="kpi-card" style="border-color:var(--yellow)">
+          <div class="kpi-label">Marge op. / contrat <span class="badge-lisibi">+LisiBi</span></div>
+          <div class="kpi-val green" id="k_marge_contrat_avec">—</div>
+          <div class="kpi-delta" id="k_marge_contrat_pct_avec"></div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Marge nette entreprise</div>
+          <div class="kpi-val" id="k_marge_ent_sans">—</div>
+          <div class="kpi-delta" id="k_marge_ent_pct_sans">sans LisiBi</div>
+        </div>
+        <div class="kpi-card" style="border-color:var(--yellow)">
+          <div class="kpi-label">Marge nette entreprise <span class="badge-lisibi">+LisiBi</span></div>
+          <div class="kpi-val green" id="k_marge_ent_avec">—</div>
+          <div class="kpi-delta" id="k_marge_ent_pct_avec"></div>
+        </div>
+      </div>
+
+
+      <!-- DYNAMIQUE KPIs -->
+      <div class="section" style="margin-bottom:16px">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-title"><span class="dot green"></span>Impact dynamique du parc</div>
+          <span class="chevron open">▼</span>
+        </div>
+        <div class="section-body" style="padding:0">
+          <table class="pl-table">
+            <thead><tr><th>Indicateur</th><th class="right">Sans LisiBi</th><th class="right" style="color:var(--yellow)">Avec LisiBi</th></tr></thead>
+            <tbody id="tbody_churn"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- P&L PAR CONTRAT -->
+      <div class="section">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-title"><span class="dot"></span>P&amp;L par contrat</div>
+          <span class="chevron open">▼</span>
+        </div>
+        <div class="section-body" style="padding:0">
+          <table class="pl-table">
+            <thead>
+              <tr>
+                <th>Poste</th>
+                <th class="right col-sans">Sans LisiBi</th>
+                <th class="right col-avec" style="color:var(--yellow)">Avec LisiBi</th>
+              </tr>
+            </thead>
+            <tbody id="tbody_contrat"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- P&L ENTREPRISE -->
+      <div class="section">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-title"><span class="dot green"></span>P&amp;L entreprise</div>
+          <span class="chevron open">▼</span>
+        </div>
+        <div class="section-body" style="padding:0">
+          <table class="pl-table">
+            <thead>
+              <tr>
+                <th>Poste</th>
+                <th class="right col-sans">Sans LisiBi</th>
+                <th class="right col-avec" style="color:var(--yellow)">Avec LisiBi</th>
+              </tr>
+            </thead>
+            <tbody id="tbody_entreprise"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  
+    <!-- PROJECTION 5 ANS -->
+    <div>
+      <div class="section">
+        <div class="section-header" onclick="toggle(this)">
+          <div class="section-title"><span class="dot" style="background:var(--success)"></span>Projection marge nette 5 ans</div>
+          <span class="chevron open">▼</span>
+        </div>
+        <div class="section-body">
+          <div class="lg">
+            <div class="li"><div class="ld" style="background:var(--muted)"></div>Sans LisiBi</div>
+            <div class="li"><div class="ld" style="background:var(--yellow)"></div>Avec LisiBi</div>
+          </div>
+          <svg id="proj_svg" width="100%" viewBox="0 0 380 185" preserveAspectRatio="none" style="display:block;height:185px"></svg>
+          <table class="pt">
+            <thead><tr>
+              <th style="text-align:left">Année</th><th>Parc</th>
+              <th>Sans k&euro;</th><th>%</th>
+              <th style="color:var(--yellow)">Avec k&euro;</th><th style="color:var(--yellow)">%</th>
+              <th style="color:var(--success)">+LisiBi</th>
+            </tr></thead>
+            <tbody id="tbody_proj"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+</div>
+
+</div>
+
+<script>
+const MULT = 1.7;
+const HEURES_MOIS = 151.67;
+
+function fmt(n, decimals=0) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return new Intl.NumberFormat('fr-FR', {maximumFractionDigits: decimals, minimumFractionDigits: decimals}).format(n);
+}
+function fmtE(n) { return fmt(n) + ' €'; }
+function fmtPct(n) { return fmt(n,1) + '%'; }
+
+function toggle(header) {
+  const body = header.nextElementSibling;
+  const chev = header.querySelector('.chevron');
+  if (body.style.display === 'none') { body.style.display = ''; chev.classList.add('open'); }
+  else { body.style.display = 'none'; chev.classList.remove('open'); }
+}
+
+function updSlider(input, valId) {
+  document.getElementById(valId).textContent = '-' + input.value + '%';
+}
+
+function v(id) { return parseFloat(document.getElementById(id).value) || 0; }
+
+function row(label, sans, avec, isSection=false, isTotal=false, isMarge=false, indent=false) {
+  const cls = isSection ? 'section-row' : isTotal ? 'total-row' : isMarge ? 'marge-row' : '';
+  const indentStyle = indent ? 'padding-left:24px;' : '';
+  const sansStr = sans !== null ? (sans < 0 ? `(${fmtE(-sans)})` : fmtE(sans)) : '—';
+  const avecStr = avec !== null ? (avec < 0 ? `(${fmtE(-avec)})` : fmtE(avec)) : '—';
+  const avecCls = avec !== null && sans !== null && avec > sans ? 'green-val' : '';
+  return `<tr class="${cls}">
+    <td style="${indentStyle}">${label}</td>
+    <td class="right col-sans">${isSection ? '' : sansStr}</td>
+    <td class="right ${avecCls}">${isSection ? '' : avecStr}</td>
+  </tr>`;
+}
+
+function margeRow(label, sans, avec, ca_sans, ca_avec) {
+  const pctS = ca_sans > 0 ? (sans/ca_sans*100) : 0;
+  const pctA = ca_avec > 0 ? (avec/ca_avec*100) : 0;
+  const delta = avec - sans;
+  return `<tr class="marge-row">
+    <td>${label}</td>
+    <td class="right col-sans">${fmtE(sans)} <span class="pct">${fmtPct(pctS)}</span></td>
+    <td class="right green-val">${fmtE(avec)} <span class="pct">${fmtPct(pctA)}</span>
+      ${delta !== 0 ? `<br><span class="gain">+${fmtPct(pctA - pctS)} / +${fmtE(delta)}</span>` : ''}
+    </td>
+  </tr>`;
+}
+
+function setCW(n, val) {
+  document.documentElement.style.setProperty('--c' + n, val + 'px');
+  document.getElementById('cw' + n).textContent = val + 'px';
+}
+
+function calc() {
+  // --- INPUTS ---
+  const arr = v('arr');
+  const ca_pieces = v('ca_pieces');
+  const marge_pieces_pct = v('marge_pieces') / 100;
+  
+  const nb_visites = v('nb_visites');
+  const duree_visite = v('duree_visite');
+  const dep_visite = v('dep_visite');
+  const sal_tech = v('salaire_net_tech');
+  const consommables = v('consommables');
+  
+  const nb_pannes = v('nb_pannes');
+  const passages_panne = v('passages_panne');
+  const duree_panne = v('duree_panne');
+  const dep_panne = v('dep_panne');
+  const cout_pieces = v('cout_pieces');
+  
+  const nb_deblocages = v('nb_deblocages');
+  const cout_deblocage = v('cout_deblocage');
+  
+  const abonnements_divers = v('abonnements_divers');
+  const lisibi_pct = v('lisibi_pct') / 100;
+  
+  const red_pannes = v('red_pannes') / 100;
+  const red_passages = v('red_passages') / 100;
+  const red_deblocages = v('red_deblocages') / 100;
+  
+  const nb_asc = v('nb_asc');
+  const nb_tech = v('nb_tech');
+  const nb_assistants = v('nb_assistants');
+  const sal_ass = v('salaire_net_ass');
+  const nb_agents = v('nb_agents');
+  const sal_agent = v('salaire_net_agent');
+  const leasing = v('leasing_vehicule');
+  const formation = v('formation_par_tech');
+  const gmao = v('gmao_par_tech');
+  const compta = v('compta_annuel');
+  const locaux = v('locaux_mensuel');
+
+  // Derived
+  const taux_h = sal_tech * MULT / HEURES_MOIS;
+  document.getElementById('taux_calc').textContent = `≈ ${fmt(taux_h, 0)}€/h (coût employeur)`;
+  document.getElementById('lisibi_montant').textContent = `= ${fmt(arr * lisibi_pct, 0)}€/an`;
+  
+  // Warning
+  const asc_par_tech = nb_tech > 0 ? nb_asc / nb_tech : 0;
+  document.getElementById('warning_asc').style.display = asc_par_tech > 100 ? 'block' : 'none';
+
+  // --- PER CONTRACT CALC ---
+  function calcContrat(np, pp, nd, includeLisibi) {
+    const cout_maint = nb_visites * ((duree_visite + dep_visite) / 60) * taux_h + nb_visites * consommables;
+    const cout_mo_pannes = np * pp * ((duree_panne + dep_panne) / 60) * taux_h;
+    const cout_pieces_rep = cout_pieces;
+    const cout_pieces_ventes = ca_pieces * (1 - marge_pieces_pct);
+    const cout_deblo = nd * cout_deblocage;
+    
+    const total_rev = arr + ca_pieces;
+    const total_directs = cout_maint + cout_mo_pannes + cout_pieces_rep + cout_pieces_ventes + cout_deblo;
+    const marge_brute = total_rev - total_directs;
+    
+    const cout_lisibi = includeLisibi ? arr * lisibi_pct : 0;
+    const total_indirect = abonnements_divers + cout_lisibi;
+    const marge_nette = marge_brute - total_indirect;
+    
+    return { total_rev, cout_maint, cout_mo_pannes, cout_pieces_rep, cout_pieces_ventes,
+             cout_deblo, total_directs, marge_brute, total_indirect, cout_lisibi, marge_nette };
+  }
+  
+  const S = calcContrat(nb_pannes, passages_panne, nb_deblocages, false);
+  const A = calcContrat(
+    nb_pannes * (1 - red_pannes),
+    passages_panne * (1 - red_passages),
+    nb_deblocages * (1 - red_deblocages),
+    true
+  );
+
+  // --- P&L CONTRAT TABLE ---
+  let html = '';
+  html += row('REVENUS', null, null, true);
+  html += row('ARR (abonnement maintenance)', arr, arr, false, false, false, true);
+  html += row('CA pièces vendues', ca_pieces, ca_pieces, false, false, false, true);
+  html += row('Total chiffre d\'affaires', S.total_rev, A.total_rev, false, true);
+  
+  html += row('COÛTS DIRECTS', null, null, true);
+  html += row('Maintenance planifiée', -S.cout_maint, -A.cout_maint, false, false, false, true);
+  html += row('Main d\'œuvre pannes', -S.cout_mo_pannes, -A.cout_mo_pannes, false, false, false, true);
+  html += row('Coût pièces réparation', -S.cout_pieces_rep, -A.cout_pieces_rep, false, false, false, true);
+  if (ca_pieces > 0) html += row('Coût pièces vendues', -S.cout_pieces_ventes, -A.cout_pieces_ventes, false, false, false, true);
+  html += row('Déblocages', -S.cout_deblo, -A.cout_deblo, false, false, false, true);
+  html += row('Total coûts directs', -S.total_directs, -A.total_directs, false, true);
+  html += margeRow('Marge brute', S.marge_brute, A.marge_brute, S.total_rev, A.total_rev);
+  
+  html += row('COÛTS INDIRECTS', null, null, true);
+  html += row('Abonnements divers', -abonnements_divers, -abonnements_divers, false, false, false, true);
+  html += row('Abonnement LisiBi (' + fmt(v('lisibi_pct'),1) + '% ARR)', 0, -A.cout_lisibi, false, false, false, true);
+  html += row('Total coûts indirects', -S.total_indirect, -A.total_indirect, false, true);
+  html += margeRow('Marge opérationnelle', S.marge_nette, A.marge_nette, S.total_rev, A.total_rev);
+  
+  document.getElementById('tbody_contrat').innerHTML = html;
+
+  // --- COMPANY FIXED COSTS ---
+  const vehicles_annuel = (nb_tech + nb_agents) * leasing * 12;
+  const formation_annuel = nb_tech * formation;
+  const gmao_annuel = nb_tech * gmao * 12;
+  const staff_non_terrain = (nb_assistants * sal_ass + nb_agents * sal_agent) * MULT * 12;
+  const locaux_annuel = locaux * 12;
+  const rc_pro = (parseFloat(document.getElementById("rc_pro").value)||0) * 12;
+  const sal_dirigeant = (parseFloat(document.getElementById("sal_dirigeant").value)||0);
+  const nb_commerciaux = (parseFloat(document.getElementById("nb_commerciaux").value)||0);
+  const sal_commercial = (parseFloat(document.getElementById("sal_commercial").value)||0);
+  const dirigeant_annuel = sal_dirigeant * MULT * 12;
+  const commerciaux_annuel = nb_commerciaux * sal_commercial * MULT * 12;
+  const tech_annuel = nb_tech * sal_tech * MULT * 12;
+  const total_fixes = staff_non_terrain + tech_annuel + vehicles_annuel + formation_annuel + gmao_annuel + compta + locaux_annuel + rc_pro + dirigeant_annuel + commerciaux_annuel;
+  // Enterprise variable costs (NO labor - salaries are fixed)
+  const var_s = (nb_visites * consommables + cout_pieces + nb_deblocages * cout_deblocage + ca_pieces * (1 - marge_pieces_pct) + abonnements_divers) * nb_asc;
+  const var_a = (nb_visites * consommables + cout_pieces * (1 - red_pannes) + nb_deblocages * (1 - red_deblocages) * cout_deblocage + ca_pieces * (1 - marge_pieces_pct) + abonnements_divers + arr * lisibi_pct) * nb_asc;
+  const ca_ent = (arr + ca_pieces) * nb_asc;
+
+  // --- COMPANY P&L ---
+  const ca_total_s = S.total_rev * nb_asc;
+  const ca_total_a = A.total_rev * nb_asc;
+  const marge_contrats_s = S.marge_nette * nb_asc;
+  const marge_contrats_a = A.marge_nette * nb_asc;
+  const marge_ent_s = ca_ent - var_s - total_fixes;
+  const marge_ent_a = ca_ent - var_a - total_fixes;
+
+  const cae = ca_ent;
+  let html2 = '';
+  html2 += row('REVENUS', null, null, true);
+  html2 += row('CA total (× ' + fmt(nb_asc) + ' ascenseurs)', cae, cae, false, false, false, true);
+  html2 += row('COÛTS VARIABLES', null, null, true);
+  html2 += row('Consommables maintenance', -(nb_visites * consommables * nb_asc), -(nb_visites * consommables * nb_asc), false, false, false, true);
+  html2 += row('Pièces réparation', -(cout_pieces * nb_asc), -(cout_pieces * (1-red_pannes) * nb_asc), false, false, false, true);
+  html2 += row('Déblocages', -(nb_deblocages * cout_deblocage * nb_asc), -(nb_deblocages * (1-red_deblocages) * cout_deblocage * nb_asc), false, false, false, true);
+  html2 += row('Abonnements divers', -(abonnements_divers * nb_asc), -(abonnements_divers * nb_asc), false, false, false, true);
+  html2 += row('Abonnement LisiBi', 0, -(arr * lisibi_pct * nb_asc), false, false, false, true);
+  html2 += row('Total coûts variables', -var_s, -var_a, false, true);
+  html2 += margeRow('Marge sur coûts variables', cae - var_s, cae - var_a, cae, cae);
+  html2 += row('CHARGES FIXES ENTREPRISE', null, null, true);
+  html2 += row('Techniciens (' + nb_tech + ' × ' + fmtE(sal_tech) + '/mois net × 1,7 × 12)', -tech_annuel, -tech_annuel, false, false, false, true);
+  if (nb_assistants > 0) html2 += row('Assistants (' + nb_assistants + ' × ' + fmtE(sal_ass) + '/mois net × 1,7 × 12)', -staff_non_terrain, -staff_non_terrain, false, false, false, true);
+  if (nb_agents > 0) html2 += row('Agents techniques (' + nb_agents + ' × ' + fmtE(sal_agent) + '/mois net × 1,7 × 12)', -(nb_agents*sal_agent*MULT*12), -(nb_agents*sal_agent*MULT*12), false, false, false, true);
+  if (nb_commerciaux > 0) html2 += row('Commerciaux (' + nb_commerciaux + ' × ' + fmtE(sal_commercial) + '/mois net × 1,7 × 12)', -commerciaux_annuel, -commerciaux_annuel, false, false, false, true);
+  html2 += row('Dirigeant (' + fmtE(sal_dirigeant) + '/mois net × 1,7 × 12)', -dirigeant_annuel, -dirigeant_annuel, false, false, false, true);
+  html2 += row('Véhicules (' + (nb_tech + nb_agents) + ' × ' + fmtE(leasing) + '/mois × 12)', -vehicles_annuel, -vehicles_annuel, false, false, false, true);
+  html2 += row('Formation (' + nb_tech + ' tech × ' + fmtE(formation) + '/an)', -formation_annuel, -formation_annuel, false, false, false, true);
+  html2 += row('GMAO (' + nb_tech + ' tech × ' + fmtE(gmao) + '/mois × 12)', -gmao_annuel, -gmao_annuel, false, false, false, true);
+  html2 += row('Expert-comptable + juridique', -compta, -compta, false, false, false, true);
+  html2 += row('RC pro (' + fmtE(parseFloat(document.getElementById("rc_pro").value)||0) + '/mois × 12)', -rc_pro, -rc_pro, false, false, false, true);
+  html2 += row('Locaux (' + fmtE(locaux) + '/mois × 12)', -locaux_annuel, -locaux_annuel, false, false, false, true);
+  html2 += row('Total charges fixes', -total_fixes, -total_fixes, false, true);
+  html2 += margeRow('Marge nette entreprise', marge_ent_s, marge_ent_a, cae, cae);
+  
+  document.getElementById('tbody_entreprise').innerHTML = html2;
+
+  // --- CHURN / GROWTH ---
+  const churn_pct = v('churn_pct') / 100;
+  const growth_pct = v('growth_pct') / 100;
+  const net_growth_pct = growth_pct - churn_pct;
+
+  const contrats_perdus = Math.round(nb_asc * churn_pct);
+  const contrats_gagnes = Math.round(nb_asc * growth_pct);
+  const net_contrats = contrats_gagnes - contrats_perdus;
+
+  document.getElementById('churn_hint').textContent = '= -' + contrats_perdus + ' contrats/an';
+  document.getElementById('growth_hint').textContent = '= +' + contrats_gagnes + ' contrats/an';
+
+  // Impact annuel sur marge nette
+  const impact_churn_s = contrats_perdus * S.marge_nette;
+  const impact_churn_a = contrats_perdus * A.marge_nette;
+  const impact_growth_s = contrats_gagnes * S.marge_nette;
+  const impact_growth_a = contrats_gagnes * A.marge_nette;
+  const impact_net_s = net_contrats * S.marge_nette;
+  const impact_net_a = net_contrats * A.marge_nette;
+
+  // Parc dans 3 ans
+  const parc_3ans = Math.round(nb_asc * Math.pow(1 + net_growth_pct, 3));
+  const marge_3ans_s = marge_ent_s * Math.pow(1 + net_growth_pct, 3);
+  const marge_3ans_a = marge_ent_a * Math.pow(1 + net_growth_pct, 3);
+
+  let htmlC = '';
+  htmlC += '<tr class="section-row"><td>IMPACT ANNUEL</td><td></td><td></td></tr>';
+  htmlC += row('Perte churn (' + contrats_perdus + ' contrats × marge/contrat)', -impact_churn_s, -impact_churn_a);
+  htmlC += row('Gain croissance (' + contrats_gagnes + ' contrats × marge/contrat)', impact_growth_s, impact_growth_a);
+  htmlC += `<tr class="total-row"><td>Impact net annuel (${net_contrats >= 0 ? '+' : ''}${net_contrats} contrats)</td>
+    <td class="right ${impact_net_s >= 0 ? 'green-val' : ''}">${impact_net_s >= 0 ? '+' : ''}${fmtE(impact_net_s)}</td>
+    <td class="right ${impact_net_a >= 0 ? 'green-val' : ''}">${impact_net_a >= 0 ? '+' : ''}${fmtE(impact_net_a)}</td></tr>`;
+
+  htmlC += '<tr class="section-row"><td>PROJECTION 3 ANS</td><td></td><td></td></tr>';
+  htmlC += `<tr><td style="padding-left:24px">Parc dans 3 ans</td><td class="right">${fmt(parc_3ans)} ascenseurs</td><td class="right">${fmt(parc_3ans)} ascenseurs</td></tr>`;
+  htmlC += margeRow('Marge nette entreprise dans 3 ans', marge_3ans_s, marge_3ans_a, ca_total_s * Math.pow(1+net_growth_pct,3), ca_total_a * Math.pow(1+net_growth_pct,3));
+
+  document.getElementById('tbody_churn').innerHTML = htmlC;
+
+  // --- KPI CARDS ---
+  const pct_s = S.total_rev > 0 ? S.marge_nette / S.total_rev * 100 : 0;
+  const pct_a = A.total_rev > 0 ? A.marge_nette / A.total_rev * 100 : 0;
+  const pct_ent_s = ca_total_s > 0 ? marge_ent_s / ca_total_s * 100 : 0;
+  const pct_ent_a = ca_total_a > 0 ? marge_ent_a / ca_total_a * 100 : 0;
+
+  document.getElementById('k_marge_contrat_sans').textContent = fmtE(S.marge_nette);
+  document.getElementById('k_marge_contrat_pct_sans').textContent = fmtPct(pct_s) + ' sans LisiBi';
+  document.getElementById('k_marge_contrat_avec').textContent = fmtE(A.marge_nette);
+  document.getElementById('k_marge_contrat_pct_avec').textContent = `${fmtPct(pct_a)} (+${fmtPct(pct_a - pct_s)})`;
+  
+  document.getElementById('k_marge_ent_sans').textContent = fmtE(marge_ent_s);
+  document.getElementById('k_marge_ent_pct_sans').textContent = fmtPct(pct_ent_s) + ' sans LisiBi';
+  document.getElementById('k_marge_ent_avec').textContent = fmtE(marge_ent_a);
+  document.getElementById('k_marge_ent_pct_avec').textContent = `${fmtPct(pct_ent_a)} (+${fmtPct(pct_ent_a - pct_ent_s)})`;
+  // PROJECTION 5 ANS
+  var netGr = (parseFloat(document.getElementById("growth_pct").value)||0)/100 - (parseFloat(document.getElementById("churn_pct").value)||0)/100;
+  var P5s=[],P5a=[];
+  for(var yi=0;yi<=5;yi++){var mul=Math.pow(1+netGr,yi),p5=Math.round(nb_asc*mul);P5s.push({p:p5,m:marge_ent_s*mul,pct:ca_total_s*mul>0?(marge_ent_s*mul)/(ca_total_s*mul)*100:0});P5a.push({p:p5,m:marge_ent_a*mul,pct:ca_total_a*mul>0?(marge_ent_a*mul)/(ca_total_a*mul)*100:0});}
+  var svEl=document.getElementById("proj_svg");
+  if(svEl){var W=380,H5=185,PL=52,PR=12,PT=10,PB=26,aM=P5s.concat(P5a).map(function(x){return x.m;});var mn=Math.min.apply(null,aM.concat([0])),mx=Math.max.apply(null,aM.concat([1])),rng=mx-mn||1;function xs5(i){return PL+i*(W-PL-PR)/5;}function ys5(v){return PT+(1-(v-mn)/rng)*(H5-PT-PB);}var lS5=P5s.map(function(x,i){return(i?"L":"M")+xs5(i).toFixed(1)+","+ys5(x.m).toFixed(1);}).join(" ");var lA5=P5a.map(function(x,i){return(i?"L":"M")+xs5(i).toFixed(1)+","+ys5(x.m).toFixed(1);}).join(" ");var tk5=[mn,(mn+mx)/2,mx].map(function(t){var y2=ys5(t).toFixed(1);return"<line x1=\""+(PL-3)+"\" y1=\""+y2+"\" x2=\""+(W-PR)+"\" y2=\""+y2+"\" stroke=\"#334155\" stroke-width=\"1\"/><text x=\""+(PL-5)+"\" y=\""+(parseFloat(y2)+3.5).toFixed(1)+"\" text-anchor=\"end\" fill=\"#94A3B8\" font-size=\"9\">"+Math.round(t/1000)+"k</text>";}).join("");var xl5=[0,1,2,3,4,5].map(function(y){return"<text x=\""+xs5(y).toFixed(1)+"\" y=\""+(H5-6)+"\" text-anchor=\"middle\" fill=\"#94A3B8\" font-size=\"9\">An "+y+"</text>";}).join("");var dS5=P5s.map(function(x,i){return"<circle cx=\""+xs5(i).toFixed(1)+"\" cy=\""+ys5(x.m).toFixed(1)+"\" r=\"2.5\" fill=\"#94A3B8\"/>";}).join("");var dA5=P5a.map(function(x,i){return"<circle cx=\""+xs5(i).toFixed(1)+"\" cy=\""+ys5(x.m).toFixed(1)+"\" r=\"3\" fill=\"#FACC15\"/>";}).join("");var zl5=mn<0?"<line x1=\""+PL+"\" y1=\""+ys5(0).toFixed(1)+"\" x2=\""+(W-PR)+"\" y2=\""+ys5(0).toFixed(1)+"\" stroke=\"#EF4444\" stroke-width=\"1\" stroke-dasharray=\"4,2\" opacity=\".5\"/>":"";svEl.innerHTML=tk5+zl5+"<path d=\""+lS5+"\" fill=\"none\" stroke=\"#94A3B8\" stroke-width=\"1.5\"/><path d=\""+lA5+"\" fill=\"none\" stroke=\"#FACC15\" stroke-width=\"2.5\"/>"+dS5+dA5+xl5;}
+  var tbP5=document.getElementById("tbody_proj");
+  if(tbP5){var hp5="",cS=0,cA=0;for(var i5=1;i5<=5;i5++){var ps5=P5s[i5],pa5=P5a[i5];cS+=ps5.m;cA+=pa5.m;var g5=pa5.m-ps5.m;var fk5=function(n){return new Intl.NumberFormat("fr-FR",{maximumFractionDigits:1,minimumFractionDigits:1}).format(n/1000);};var fp5=function(n){return new Intl.NumberFormat("fr-FR",{maximumFractionDigits:1}).format(n)+"%";};hp5+="<tr><td>An "+i5+"</td><td>"+ps5.p.toLocaleString("fr-FR")+"</td><td>"+fk5(ps5.m)+"</td><td style=color:var(--muted)>"+fp5(ps5.pct)+"</td><td style=color:var(--yellow)>"+fk5(pa5.m)+"</td><td style=color:var(--yellow)>"+fp5(pa5.pct)+"</td><td style=color:var(--success)>+"+fk5(g5)+"</td></tr>";}var fk50=function(n){return new Intl.NumberFormat("fr-FR",{maximumFractionDigits:0}).format(n/1000);};hp5+="<tr class=cr><td>Cumul 5 ans</td><td></td><td>"+fk50(cS)+"k</td><td></td><td style=color:var(--yellow)>"+fk50(cA)+"k</td><td></td><td style=color:var(--success)>+"+fk50(cA-cS)+"k</td></tr>";tbP5.innerHTML=hp5;}
+}
+
+  // RESOURCE MANAGEMENT
+  const heures_prod_an = parseFloat(document.getElementById('heures_prod').value) || 1575;
+  const h_maint = nb_visites * (duree_visite + dep_visite) / 60;
+  const h_pannes = nb_pannes * passages_panne * (duree_panne + dep_panne) / 60;
+  const h_deblo = nb_deblocages * (dep_panne / 60 + 1);
+  const h_par_asc = h_maint + h_pannes + h_deblo;
+  const h_cons = h_par_asc * nb_asc;
+  const h_dispo = heures_prod_an * nb_tech;
+  const prod_pct = h_dispo > 0 ? h_cons / h_dispo * 100 : 0;
+  const max_asc = h_par_asc > 0 ? Math.floor(h_dispo * 0.8 / h_par_asc) : 0;
+  const tech_rec = h_par_asc > 0 ? Math.ceil(h_cons / (heures_prod_an * 0.8)) : 0;
+
+  const prodColor = prod_pct > 85 ? '#EF4444' : prod_pct > 70 ? '#F97316' : '#22C55E';
+  const prodEl = document.getElementById('res_prod');
+  if (prodEl) {
+    prodEl.textContent = fmtPct(prod_pct);
+    prodEl.style.color = prodColor;
+    document.getElementById('res_prod_sub').textContent = prod_pct > 85 ? '⚠️ Surcharge' : prod_pct > 70 ? '⚡ Chargé' : '✅ Optimal';
+    document.getElementById('res_hcons').textContent = fmt(Math.round(h_cons)) + ' h';
+    document.getElementById('res_hcons_sub').textContent = fmt(Math.round(h_par_asc)) + ' h / ascenseur / an';
+    document.getElementById('res_hdispo').textContent = fmt(Math.round(h_dispo)) + ' h';
+    document.getElementById('res_hdispo_sub').textContent = heures_prod_an + ' h × ' + nb_tech + ' tech';
+    document.getElementById('res_max_asc').textContent = fmt(max_asc);
+    document.getElementById('res_max_asc_sub').textContent = nb_asc > max_asc ? '⚠️ Parc actuel : ' + fmt(nb_asc) : '✅ Parc actuel : ' + fmt(nb_asc);
+    document.getElementById('res_tech_rec').textContent = tech_rec;
+    document.getElementById('res_tech_rec_sub').textContent = tech_rec > nb_tech ? '⚠️ Actuels : ' + nb_tech : '✅ Actuels : ' + nb_tech;
+    const fill = document.getElementById('res_pfill');
+    fill.style.width = Math.min(prod_pct, 100) + '%';
+    fill.style.background = prodColor;
+  }
+
+// Init
+calc();
+</script>
+</body>
+</html>
